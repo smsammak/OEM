@@ -65,10 +65,45 @@ const observations = {written:'نوشته روی برگه دیده شد', empty:
 function options(items) {
   return Object.entries(items).map(([action, label]) => btn(label, action)).join('');
 }
+const batterySigns = { noIcon: 'علامت شارژ نمی‌آید', steady: 'درصد شارژ بالا نمی‌رود', drain: 'باتری زود خالی می‌شود' };
+const slowSigns = { payment: 'فقط موقع پرداخت', device: 'در کل دستگاه', freeze: 'گاهی دستگاه از کار می‌افتد' };
+const onset = { today: 'از امروز', earlier: 'از قبل', unsure: 'زمان شروع نامشخص' };
+const frequency = { always: 'هر بار', sometimes: 'گاهی', once: 'فقط یک بار' };
+let details = {};
+function entryPage() {
+  return ['understand','symptom','battery','slow','software'][category];
+}
+function detailReport() {
+  return [batterySigns[details.sign] || slowSigns[details.sign], details.link, onset[details.when], frequency[details.frequency], details.error]
+    .filter(Boolean).join(' · ');
+}
+function detailScreens() {
+  switch(page) {
+    case 'battery': return '<h1>چه مشکلی در شارژ می‌بینی؟</h1><div class="actions">'+options(batterySigns)+'</div>';
+    case 'slow': return '<h1>کندی رو کجا می‌بینی؟</h1><div class="actions">'+options(slowSigns)+'</div>';
+    case 'connection': return '<h1>خطای ارتباط هم می‌بینی؟</h1><div class="actions">'+btn('بله، بررسی شبکه','netYes',true)+btn('خیر','netNo')+'</div>';
+    case 'onset': return '<h1>از چه زمانی شروع شده؟</h1><div class="actions">'+options(onset)+'</div>';
+    case 'frequency': return '<h1>چند وقت یک‌بار رخ می‌دهد؟</h1><div class="actions">'+options(frequency)+'</div>';
+    case 'software': return '<h1>چه خطایی می‌بینی؟</h1><label for="errorText">کد یا متن پیام روی دستگاه</label><textarea id="errorText" maxlength="160" placeholder="مثلاً: خطای ۱۲۳">'+esc(details.error || issue)+'</textarea><p class="muted">اطلاعات کارت یا تراکنش را وارد نکن.</p>'+btn('بررسی خطا','lookup',true);
+    default: return '';
+  }
+}
+function diagnosticFinding() {
+  if(category===2) {
+    const evidence = {
+      noIcon:'نمونهٔ نمایشی | اتصال شارژر شناسایی نشد. شارژ فعلی ۴۶٪ است. علت از این بررسی مشخص نیست.',
+      steady:'نمونهٔ نمایشی | شارژر متصل است. شارژ در شروع و پایان بررسی ۴۶٪ بود. این بازه برای تشخیص خرابی کافی نیست.',
+      drain:'نمونهٔ نمایشی | شارژر جداست و شارژ فعلی ۴۶٪ است. برای سنجش سرعت تخلیه، سابقهٔ مصرف لازم است.'
+    };
+    return evidence[details.sign] || 'برای بررسی شارژ، نشانه را دوباره انتخاب کن.';
+  }
+  if(category===3) return 'شرح کندی ثبت شد. برای تشخیص علت، بررسی پشتیبانی لازم است.';
+  return 'برای این پیام در نسخهٔ نمایشی راهنمای مصوبی موجود نیست. کد یا متن خطا در گزارش ثبت شد.';
+}
 const bottomBar = document.querySelector('header nav');
 const mainMenu = bottomBar.innerHTML;
 const previousSteps = [];
-function persist(){try{localStorage.setItem('oem-demo-session',JSON.stringify({page,category,issue,attempts,result,previousSteps}))}catch{}}
+function persist(){try{localStorage.setItem('oem-demo-session',JSON.stringify({page,category,issue,attempts,result,details,previousSteps}))}catch{}}
 function go(p, remember = true) {
   clearTimeout(timer);
   run++;
@@ -79,9 +114,9 @@ function go(p, remember = true) {
   render();
   window.scrollTo(0,0);
 }
-function reset(){issue='';attempts=[];result='';category=0;go('home')}
-try{const s=JSON.parse(localStorage.getItem('oem-demo-session')||'null');if(s&&Number.isInteger(s.category)&&s.category>=0&&s.category<names.length&&Array.isArray(s.attempts)){if(Array.isArray(s.previousSteps)) previousSteps.push(...s.previousSteps.filter(step=>['home','understand','symptom','plan','approval','analysis','advice'].includes(step)).slice(-80));
-category=s.category;issue=String(s.issue||'');attempts=s.attempts.filter(a=>a&&typeof a.text==='string'&&typeof a.time==='string');result=String(s.result||'');page=['home','understand','plan','symptom','observation','analysis','advice','report','history'].includes(s.page)?s.page:'plan'}}catch{}
+function reset(){details={};issue='';attempts=[];result='';category=0;go('home')}
+try{const s=JSON.parse(localStorage.getItem('oem-demo-session')||'null');if(s&&Number.isInteger(s.category)&&s.category>=0&&s.category<names.length&&Array.isArray(s.attempts)){if(Array.isArray(s.previousSteps)) previousSteps.push(...s.previousSteps.filter(step=>['home','battery','slow','connection','onset','frequency','software','understand','symptom','plan','approval','analysis','advice'].includes(step)).slice(-80));
+details=s.details && typeof s.details==='object'?s.details:{};category=s.category;issue=String(s.issue||'');attempts=s.attempts.filter(a=>a&&typeof a.text==='string'&&typeof a.time==='string');result=String(s.result||'');page=['home','battery','slow','connection','onset','frequency','software','understand','plan','symptom','observation','analysis','advice','report','history'].includes(s.page)?s.page:'plan'}}catch{}
 
 function render(){
 const inSession = page !== 'home' && page !== 'history';
@@ -94,7 +129,8 @@ if(page==='home')content+='<div class="welcome"><h1>دستگاهت رو بهتر
 if(page==='understand')content+='<span class="badge">۱ · فهم مسئله</span><h1>درست متوجه شدیم؟</h1><p>'+esc(issue||names[category])+'</p><div class="evidence"><small>برداشت اولیهٔ نمایشی</small>مشکل مربوط به «'+names[category]+'» است.</div><div class="actions">'+btn('درسته، ادامه بده','plan',true)+btn('اصلاح مشکل','home')+'</div>';
 if(page==='symptom') content += '<span class="badge">چاپگر</span><h1>موقع چاپ رسید چه اتفاقی می‌افتد؟</h1><div class="actions">'+options(symptoms)+'</div>';
 if(page==='observation') content += '<span class="badge">چاپ نمایشی انجام شد</span><h1>روی برگه نوشته‌ای می‌بینی؟</h1><p>در این پیش‌نمایش، نتیجه‌ای را که می‌خواهی امتحان کنی انتخاب کن.</p><div class="actions">'+options(observations)+'</div>';
-if(page==='plan')content+='<span class="badge">۲ · برنامهٔ بررسی</span><h1>'+names[category]+' را بررسی کنیم</h1><p>'+(category===0?'ابتدا اتصال شبکه و سپس، در صورت امکان، پاسخ مقصد مجاز بررسی می‌شود.':'این بخش فعلاً مسیر نمایشی دارد و قابلیت دستگاه را تأیید نمی‌کند.')+'</p><p class="muted">هیچ تراکنش یا تست واقعی اجرا نمی‌شود.</p><div class="actions">'+btn(category===1?'ادامه به تأیید چاپ':'شروع بررسی','start',true)+'</div>';
+if(page==='plan' && category>=2) content+='<span class="badge">بررسی نمایشی</span><h1>'+esc(names[category])+'</h1><div class="evidence">'+esc(detailReport())+'</div><p>'+(category===2?'وضعیت اتصال شارژر و سطح شارژ را در نمونه می‌بینی.':details.link==='همراه خطای ارتباط'?'ابتدا اتصال شبکه و پاسخ مقصد را بررسی می‌کنیم.':'شرح نشانه، زمان شروع و دفعات وقوع برای پشتیبانی ثبت می‌شود.')+'</p>'+btn('شروع بررسی','start',true);
+if(page==='plan' && category<2)content+='<span class="badge">۲ · برنامهٔ بررسی</span><h1>'+names[category]+' را بررسی کنیم</h1><p>'+(category===0?'ابتدا اتصال شبکه و سپس، در صورت امکان، پاسخ مقصد مجاز بررسی می‌شود.':'این بخش فعلاً مسیر نمایشی دارد و قابلیت دستگاه را تأیید نمی‌کند.')+'</p><p class="muted">هیچ تراکنش یا تست واقعی اجرا نمی‌شود.</p><div class="actions">'+btn(category===1?'ادامه به تأیید چاپ':'شروع بررسی','start',true)+'</div>';
 if(page==='approval')content+='<h1>چاپ آزمایشی</h1><p>در نسخهٔ متصل به دستگاه، این اقدام یک برگه مصرف می‌کند. در این نمونه فقط نتیجه شبیه‌سازی می‌شود.</p><div class="actions">'+btn('تأیید و شبیه‌سازی چاپ','print',true)+btn('انصراف؛ تست اجرا نشود','decline')+'</div>';
 if(page==='running')content+='<span class="badge">در حال اجرای نمونه</span><h1>در حال بررسی…</h1><p>لطفاً منتظر نتیجهٔ شبیه‌سازی بمانید.</p><div class="progress"><div style="width:55%"></div></div><div class="actions">'+btn('توقف بررسی','stop')+'</div>';
 if(page==='analysis')content+='<span class="badge">شواهد بررسی</span><h1>'+esc(result)+'</h1>'+attempts.map((a,i)=>'<div class="evidence"><small>تلاش '+(i+1)+' · شبیه‌سازی · '+esc(a.time)+'</small>'+esc(a.text)+'</div>').join('')+'<div class="evidence warning"><small>محدودیت تشخیص</small>'+(category===1?'موفقیت چاپ آزمایشی، رفع مشکل رسید تراکنش را تأیید نمی‌کند.':'این داده‌های نمونه برای تشخیص خرابی واقعی کافی نیستند.')+'</div><div class="actions">'+btn('دیدن قدم بعد','advice',true)+btn('آماده‌سازی گزارش','report')+'</div>';
@@ -102,16 +138,16 @@ if(page==='advice' && category===1) content += '<span class="badge">نتیجهٔ
 if(page==='advice' && category!==1)content+='<h1>قدم بعدی</h1><p>راهکار عملی باید از محتوای مصوب OEM دریافت شود. در این نمونه، دستور تعمیر ارائه نمی‌شود.</p><p class="muted">می‌توانید بررسی نمایشی را تکرار کنید یا نتیجهٔ مشکل گزارش‌شده را ثبت کنید.</p>'+btn('بررسی مجدد','start',true)+'<h3>مشکلی که گزارش کردید برطرف شده؟</h3><div class="actions">'+btn('حل شد','resolved')+btn('حل نشد','unresolved')+btn('مطمئن نیستم','uncertain')+'</div>';
 if(page==='report')content+='<h1>پیش‌نمایش گزارش</h1><p class="muted">گزارش محلی نمونه؛ ارسال خودکار انجام نمی‌شود.</p><pre>'+esc(report())+'</pre><div class="actions">'+btn('دانلود گزارش','download',true)+btn('ذخیره در سوابق','save')+btn('بررسی جدید','new')+'</div>';
 if(page==='history')content+='<h1>سوابق بررسی</h1>'+(history.length?history.map((h,i)=>'<div class="evidence"><b>'+esc(h.title)+'</b><p class="muted">'+esc(h.time)+'</p><button data-record="'+i+'">مشاهده گزارش</button></div>').join(''):'<div class="empty">هنوز گزارشی ذخیره نشده است.</div>')+btn('شروع بررسی جدید','new');
-view.innerHTML=content;
+view.innerHTML=content+detailScreens();
 }
-function report(){return 'گزارش نمایشی OEM\nمسئله: '+(issue||names[category])+'\nنتیجه: '+(result||'بررسی نشده')+'\n'+attempts.map((a,i)=>(i+1)+'. '+a.time+' — '+a.text).join('\n')+'\nمنبع: شبیه‌سازی؛ بدون اتصال به دستگاه';}
+function report(){return 'گزارش نمایشی OEM\nمسئله: '+[issue||names[category],detailReport()].filter(Boolean).join('\n')+'\nنتیجه: '+(result||'بررسی نشده')+'\n'+attempts.map((a,i)=>(i+1)+'. '+a.time+' — '+a.text).join('\n')+'\nمنبع: شبیه‌سازی؛ بدون اتصال به دستگاه';}
 function complete(text,next='analysis'){result=text;attempts.push({text,time:new Date().toLocaleTimeString('fa-IR')});go(next)}
-function start(){go('running');const token=run;timer=setTimeout(()=>{if(token!==run)return;let text=category===0?({timeout:'شبکه متصل است؛ مقصد در زمان مجاز پاسخ نداد.',passed:'ارتباط نمونه برقرار شد؛ رفع مشکل پرداخت هنوز تأیید نشده.',disconnected:'در نمونه، اتصال شبکه برقرار نیست.',unsupported:'بررسی مقصد در این نمونه پشتیبانی نمی‌شود.'}[document.querySelector('#scenario').value]):category===1?'درخواست چاپ شبیه‌سازی شد؛ خروجی فیزیکی بررسی نشده است.':'برای این دسته هنوز بررسی متصل به دستگاه موجود نیست.';complete(text,category===1?'observation':'analysis')},1400)}
+function start(){go('running');const token=run;timer=setTimeout(()=>{if(token!==run)return;let text=(category===0 || (category===3 && details.link==='همراه خطای ارتباط'))?({timeout:'شبکه متصل است؛ مقصد در زمان مجاز پاسخ نداد.',passed:'ارتباط نمونه برقرار شد؛ رفع مشکل پرداخت هنوز تأیید نشده.',disconnected:'در نمونه، اتصال شبکه برقرار نیست.',unsupported:'بررسی مقصد در این نمونه پشتیبانی نمی‌شود.'}[document.querySelector('#scenario').value]):category===1?'درخواست چاپ شبیه‌سازی شد؛ خروجی فیزیکی بررسی نشده است.':diagnosticFinding();complete(text,category===1?'observation':'analysis')},1400)}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(page==='home'){const input=document.querySelector('#issue');if(input)issue=input.value.trim()}
-if(b.dataset.nav){go(b.dataset.nav);return}if(b.dataset.cat){const next=Number(b.dataset.cat);if(next!==category){attempts=[];result=''}category=next;persist();render();return}if(b.dataset.record){const h=history[Number(b.dataset.record)];view.innerHTML='<h1>گزارش ذخیره‌شده</h1><pre>'+esc(h.report)+'</pre>'+btn('بازگشت به سوابق','history');return}
+if(b.dataset.nav){go(b.dataset.nav);return}if(b.dataset.cat){const next=Number(b.dataset.cat);if(next!==category){details={};attempts=[];result=''}category=next;persist();render();return}if(b.dataset.record){const h=history[Number(b.dataset.record)];view.innerHTML='<h1>گزارش ذخیره‌شده</h1><pre>'+esc(h.report)+'</pre>'+btn('بازگشت به سوابق','history');return}
 const a=b.dataset.action;if(!a)return;
 if(a==='previous'){go(previousSteps.pop() || 'home', false);return}
-if(a==='understand'){attempts=[];result='';go(category===1?'symptom':'understand')}
+if(a==='understand'){attempts=[];result='';details={};go(entryPage())}
 else if(page==='symptom' && Object.hasOwn(symptoms,a)){
   attempts.push({text:'شرح پذیرنده: '+symptoms[a],time:new Date().toLocaleTimeString('fa-IR')});
   go('approval');
@@ -121,8 +157,22 @@ else if(page==='observation' && Object.hasOwn(observations,a)){
   result = observations[a];
   go('analysis');
 }
+else if(page==='battery' && Object.hasOwn(batterySigns,a)){details={sign:a};go('plan')}
+else if(page==='slow' && Object.hasOwn(slowSigns,a)){details={sign:a};go(a==='payment'?'connection':'onset')}
+else if(page==='connection' && ['netYes','netNo'].includes(a)){
+  details.link=a==='netYes'?'همراه خطای ارتباط':'بدون خطای ارتباط';
+  go(a==='netYes'?'plan':'onset');
+}
+else if(page==='onset' && Object.hasOwn(onset,a)){details.when=a;go('frequency')}
+else if(page==='frequency' && Object.hasOwn(frequency,a)){details.frequency=a;go('plan')}
+else if(page==='software' && a==='lookup'){
+  const field=document.querySelector('#errorText');
+  details.error=field.value.trim();
+  if(!details.error){field.setCustomValidity('کد یا متن خطا را وارد کن.');field.reportValidity();return}
+  complete(diagnosticFinding());
+}
 else if(a==='new')reset();
-else if(a==='start'){if(category===1)go('approval');else start()}
+else if(a==='start'){if(category===4)go('software');else if(category===1)go('approval');else start()}
 else if(a==='print' && page==='approval' && category===1)start();
 else if(a==='decline')complete('چاپ آزمایشی با انتخاب کاربر اجرا نشد.');
 else if(a==='stop')complete('بررسی توسط کاربر متوقف شد؛ نتیجهٔ تست تکمیل نشده است.');
@@ -131,7 +181,7 @@ else if(a==='save'){history.unshift({title:issue||names[category],time:new Date(
 else if(a==='download'){const url=URL.createObjectURL(new Blob([report()],{type:'text/plain;charset=utf-8'}));const link=document.createElement('a');link.href=url;link.download='oem-demo-report.txt';link.click();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 else {if(a==='home'&&page==='history'){issue='';attempts=[];result=''}go(a)}
 });
-document.addEventListener('input',e=>{if(e.target.id==='issue'){issue=e.target.value;persist()}});
+document.addEventListener('input',e=>{if(e.target.id==='errorText'){details.error=e.target.value;e.target.setCustomValidity('');persist()}if(e.target.id==='issue'){issue=e.target.value;persist()}});
 document.querySelector('#offline').addEventListener('change',()=>{if(page!=='running')render()});
 render();
 </script></html>
