@@ -50,6 +50,8 @@ header { padding: 12px 20px 4px; }
 .welcome h1 { font-size: clamp(18px, 5vw, 22px); line-height: 1.5; }
 nav.session-bar {grid-template-columns:1fr;}
 nav.session-bar button {width:100%;background:#24392e;color:#fff;}
+a.round-arrow{width:44px;height:44px;text-decoration:none}
+@media(max-height:650px){.hero{min-height:0;padding:12px 16px}.hero h2{margin:5px 0}.hero p{display:none}.hero-bottom{margin-top:4px}.section-title{margin-top:14px}.welcome{margin-bottom:8px}}
 </style>
 <header><div class="app-heading"><div class="brand"><span class="logo">✳</span><div>همراه<span class="brand-sub">دستیار دستگاه شما</span></div></div><span class="device-pill">POS <i></i></span></div><nav><button data-nav="home"><span aria-hidden="true">⌂</span> خانه</button><button data-nav="history"><span aria-hidden="true">◷</span> سوابق بررسی</button></nav></header>
 <div class="layout"><main><div class="notice">پیش‌نمایش اپ موبایل و POS · بررسی‌ها نمایشی‌اند.</div><div id="view" class="panel" aria-live="polite"></div><details class="demo-controls"><summary>تنظیمات پیش‌نمایش</summary><div id="demo-settings"></div></details></main><aside><div class="panel"><span class="badge">راهنمای عیب‌یابی</span><h3>قدم‌به‌قدم، کنار شما</h3><div class="step"><b>۱</b> توضیح مشکل</div><div class="step"><b>۲</b> بررسی دستگاه</div><div class="step"><b>۳</b> راهکار و نتیجه</div><p class="muted">نتیجهٔ بررسی و برداشت راهنما به‌صورت جدا نمایش داده می‌شوند.</p></div><div class="panel"><h3>تنظیمات نمونه</h3><label><input id="offline" type="checkbox"> راهنمای آفلاین</label><label for="scenario" class="muted">نتیجهٔ شبیه‌سازی شبکه</label><select id="scenario"><option value="timeout">عدم دریافت پاسخ مقصد</option value="passed">ارتباط برقرار</option><option value="disconnected">شبکه قطع است</option><option value="unsupported">تست پشتیبانی نمی‌شود</option></select><p class="muted">وضعیت واقعی دستگاه: بررسی نشده</p></div></aside></div><footer>همراه دستگاه · پیش‌نمایش تعاملی اپ · بدون اتصال به سخت‌افزار</footer>
@@ -72,6 +74,12 @@ const frequency = { always: 'هر بار', sometimes: 'گاهی', once: 'فقط 
 let details = {};
 function entryPage() {
   return ['understand','symptom','battery','slow','software'][category];
+}
+function beginDiagnosis() {
+  attempts = [];
+  result = '';
+  details = {};
+  go(entryPage());
 }
 function detailReport() {
   return [batterySigns[details.sign] || slowSigns[details.sign], details.link, onset[details.when], frequency[details.frequency], details.error]
@@ -124,7 +132,7 @@ bottomBar.classList.toggle('session-bar', inSession);
 bottomBar.innerHTML = inSession ? btn('<span aria-hidden="true">→</span> بازگشت','previous') : mainMenu;
 const offline=document.querySelector('#offline').checked;
 let content=offline?'<div class="notice">راهنمای آنلاین در دسترس نیست؛ می‌توانید با مسیر محلی نمونه ادامه دهید.</div>':'';
-if(page==='home')content+='<div class="welcome"><h1>دستگاهت رو بهتر بشناس.</h1></div><section class="hero"><div class="hero-top"><span class="hero-label">دستیار عیب‌یابی</span><span class="spark">✳</span></div><h2>با هم بررسیش می‌کنیم</h2><p>مشکل رو انتخاب کن؛ قدم‌به‌قدم<br>تا نتیجه همراهت هستیم.</p><div class="hero-bottom"><span>بررسی نشده</span><span class="round-arrow">↙</span></div><div class="glass-shape" aria-hidden="true"><i></i><i></i><i></i></div></section><div class="section-title"><h2>از کجا شروع کنیم؟</h2><span>۵ دستهٔ بررسی</span></div><div class="categories">'+names.map((n,i)=>'<button class="category '+(category===i?'selected':'')+'" aria-pressed="'+(category===i)+'" data-cat="'+i+'"><span class="cat-icon">'+icons[i]+'</span><span class="cat-name">'+n+'</span><span class="cat-check" aria-hidden="true">'+(category===i?'✓':'↖')+'</span></button>').join('')+'</div><div class="issue-box"><label for="issue">با کلمات خودت بگو <span>اختیاری</span></label><textarea id="issue" maxlength="500" placeholder="مثلاً: رسید چاپ نمی‌شود…">'+esc(issue)+'</textarea></div>'+btn('شروع بررسی <span aria-hidden="true">←</span>','understand',true)+'<p class="home-footnote">کنترل بررسی در دست شماست؛ هر زمان می‌توانید متوقف کنید.</p>';
+if(page==='home')content+='<div class="welcome"><h1>دستگاهت رو بهتر بشناس.</h1></div><section class="hero"><div class="hero-top"><span class="hero-label">دستیار عیب‌یابی</span><span class="spark">✳</span></div><h2>با هم بررسیش می‌کنیم</h2><p>مشکل رو انتخاب کن؛ قدم‌به‌قدم<br>تا نتیجه همراهت هستیم.</p><div class="hero-bottom"><span>بررسی نشده</span><a class="round-arrow" href="#issue-categories" aria-label="رفتن به دسته‌های بررسی">↓</a></div><div class="glass-shape" aria-hidden="true"><i></i><i></i><i></i></div></section><div id="issue-categories" class="section-title"><h2>از کجا شروع کنیم؟</h2><span>۵ دستهٔ بررسی</span></div><div class="categories">'+names.map((n,i)=>'<button class="category" aria-label="شروع بررسی '+n+'" data-cat="'+i+'"><span class="cat-icon">'+icons[i]+'</span><span class="cat-name">'+n+'</span><span class="cat-check" aria-hidden="true">↖</span></button>').join('')+'</div><div class="issue-box"><label for="issue">با کلمات خودت بگو <span>اختیاری</span></label><textarea id="issue" maxlength="500" placeholder="مثلاً: رسید چاپ نمی‌شود…">'+esc(issue)+'</textarea></div>'+btn('شروع بررسی <span aria-hidden="true">←</span>','understand',true)+'<p class="home-footnote">کنترل بررسی در دست شماست؛ هر زمان می‌توانید متوقف کنید.</p>';
 
 if(page==='understand')content+='<span class="badge">۱ · فهم مسئله</span><h1>درست متوجه شدیم؟</h1><p>'+esc(issue||names[category])+'</p><div class="evidence"><small>برداشت اولیهٔ نمایشی</small>مشکل مربوط به «'+names[category]+'» است.</div><div class="actions">'+btn('درسته، ادامه بده','plan',true)+btn('اصلاح مشکل','home')+'</div>';
 if(page==='symptom') content += '<span class="badge">چاپگر</span><h1>موقع چاپ رسید چه اتفاقی می‌افتد؟</h1><div class="actions">'+options(symptoms)+'</div>';
@@ -144,10 +152,14 @@ function report(){return 'گزارش نمایشی OEM\nمسئله: '+[issue||nam
 function complete(text,next='analysis'){result=text;attempts.push({text,time:new Date().toLocaleTimeString('fa-IR')});go(next)}
 function start(){go('running');const token=run;timer=setTimeout(()=>{if(token!==run)return;let text=(category===0 || (category===3 && details.link==='همراه خطای ارتباط'))?({timeout:'شبکه متصل است؛ مقصد در زمان مجاز پاسخ نداد.',passed:'ارتباط نمونه برقرار شد؛ رفع مشکل پرداخت هنوز تأیید نشده.',disconnected:'در نمونه، اتصال شبکه برقرار نیست.',unsupported:'بررسی مقصد در این نمونه پشتیبانی نمی‌شود.'}[document.querySelector('#scenario').value]):category===1?'درخواست چاپ شبیه‌سازی شد؛ خروجی فیزیکی بررسی نشده است.':diagnosticFinding();complete(text,category===1?'observation':'analysis')},1400)}
 document.addEventListener('click',e=>{const b=e.target.closest('button');if(!b)return;if(page==='home'){const input=document.querySelector('#issue');if(input)issue=input.value.trim()}
-if(b.dataset.nav){go(b.dataset.nav);return}if(b.dataset.cat){const next=Number(b.dataset.cat);if(next!==category){details={};attempts=[];result=''}category=next;persist();render();return}if(b.dataset.record){const h=history[Number(b.dataset.record)];view.innerHTML='<h1>گزارش ذخیره‌شده</h1><pre>'+esc(h.report)+'</pre>'+btn('بازگشت به سوابق','history');return}
+if(b.dataset.nav){go(b.dataset.nav);return}if(b.dataset.cat){
+  category = Number(b.dataset.cat);
+  beginDiagnosis();
+  return;
+}if(b.dataset.record){const h=history[Number(b.dataset.record)];view.innerHTML='<h1>گزارش ذخیره‌شده</h1><pre>'+esc(h.report)+'</pre>'+btn('بازگشت به سوابق','history');return}
 const a=b.dataset.action;if(!a)return;
 if(a==='previous'){go(previousSteps.pop() || 'home', false);return}
-if(a==='understand'){attempts=[];result='';details={};go(entryPage())}
+if(a==='understand'){beginDiagnosis()}
 else if(page==='symptom' && Object.hasOwn(symptoms,a)){
   attempts.push({text:'شرح پذیرنده: '+symptoms[a],time:new Date().toLocaleTimeString('fa-IR')});
   go('approval');
